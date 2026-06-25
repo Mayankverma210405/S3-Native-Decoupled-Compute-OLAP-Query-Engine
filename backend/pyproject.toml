@@ -1,13 +1,16 @@
 [project]
-name = "backend"
+name = "s3-native-olap-engine"
 version = "0.1.0"
-description = "Add your description here"
+description = "Cloud-native serverless OLAP query engine over Amazon S3 using DuckDB."
 readme = "README.md"
-authors = [
-    { name = "Mayankverma210405", email = "mayankverma210405@gmail.com" }
-]
 requires-python = ">=3.12"
+
+authors = [
+    { name = "Mayank Verma", email = "mayankverma210405@gmail.com" }
+]
+
 dependencies = [
+    "alembic>=1.18.4",
     "boto3>=1.43.36",
     "duckdb>=1.5.4",
     "fastapi>=0.138.0",
@@ -20,9 +23,9 @@ dependencies = [
     "uvicorn>=0.49.0",
 ]
 
-[project.scripts]
-backend = "backend:main"
-
 [build-system]
 requires = ["uv_build>=0.11.24,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+package = false

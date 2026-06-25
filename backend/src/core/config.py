@@ -7,11 +7,15 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "S3 Native Decoupled Compute OLAP Query Engine"
     API_VERSION: str = "v1"
 
+    DATABASE_URL: str
+
     AWS_REGION: str = "ap-south-1"
 
-    DATABASE_URL: str = ""
-
     LOG_LEVEL: str = "INFO"
+
+    DEBUG: bool = False
+
+    ENVIRONMENT: str = "development"
 
     model_config = SettingsConfigDict(
         env_file=".env",
