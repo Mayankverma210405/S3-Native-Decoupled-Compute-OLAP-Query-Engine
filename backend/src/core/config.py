@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     ENVIRONMENT: str = "development"
+    
+    S3_BUCKET_NAME: str = ""
+        
     STORAGE_BACKEND: str = "local"
     LOCAL_STORAGE_PATH: str = "storage"
 
