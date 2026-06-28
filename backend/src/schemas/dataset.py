@@ -8,9 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field
 class DatasetCreate(BaseModel):
     """
     Request schema for registering dataset metadata.
-
-    Later, CSV upload code will generate this metadata automatically.
-    For now, we send it manually to test the backend flow.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -28,8 +25,6 @@ class DatasetCreate(BaseModel):
 class DatasetRead(BaseModel):
     """
     Response schema for a dataset.
-
-    This is what the API sends to the frontend/client.
     """
 
     model_config = ConfigDict(
@@ -67,11 +62,21 @@ class DatasetPreviewResponse(BaseModel):
     execution_time_ms: float
 
 
+class DatasetDownloadUrlResponse(BaseModel):
+    """
+    Response schema for temporary dataset download URLs.
+    """
+
+    dataset_id: UUID
+    object_key: str
+    download_url: str
+    expires_in_seconds: int
+    storage_backend: str
+
+
 class DatasetListResponse(BaseModel):
     """
     Response schema for listing datasets.
-
-    We wrap the list with metadata so the frontend can support pagination later.
     """
 
     items: list[DatasetRead]

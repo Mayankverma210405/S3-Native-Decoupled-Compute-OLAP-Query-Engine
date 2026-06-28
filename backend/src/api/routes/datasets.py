@@ -8,19 +8,21 @@ from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.schemas.dataset import (
     DatasetCreate,
+    DatasetDownloadUrlResponse,
     DatasetListResponse,
     DatasetPreviewResponse,
     DatasetRead,
 )
 from src.services.csv_analyzer import CsvAnalyzer
 from src.services.dataset_service import DatasetService
-from src.storage.factory import get_object_storage
 from src.services.query_engine import (
     DatasetNotFoundError,
     DatasetObjectNotFoundError,
     DuckDBQueryEngine,
     QueryExecutionError,
 )
+from src.storage.factory import get_object_storage
+
 
 router = APIRouter(
     prefix="/datasets",
@@ -39,10 +41,7 @@ async def upload_dataset(
     db: Session = Depends(get_db),
 ) -> DatasetRead:
     """
-    Upload a CSV file, analyze it, and register dataset metadata.
-
-    In this version, we analyze the CSV and store metadata in PostgreSQL.
-    S3 upload will be added in the next storage module.
+    Upload a CSV file, analyze it, store it, and register dataset metadata.
     """
     original_filename = Path(file.filename or "").name
 
@@ -110,9 +109,6 @@ def register_dataset(
 ) -> DatasetRead:
     """
     Register dataset metadata manually.
-
-    This is useful for development and testing.
-    Full CSV upload uses /datasets/upload.
     """
     service = DatasetService(db)
     return service.register_dataset(payload)
@@ -126,8 +122,6 @@ def list_datasets(
 ) -> DatasetListResponse:
     """
     List registered datasets.
-
-    This endpoint will be used by the dashboard to show available datasets.
     """
     service = DatasetService(db)
     datasets = service.list_datasets(limit=limit, offset=offset)
@@ -138,6 +132,8 @@ def list_datasets(
         limit=limit,
         offset=offset,
     )
+
+
 @router.get("/{dataset_id}/preview", response_model=DatasetPreviewResponse)
 def preview_dataset(
     dataset_id: UUID,
@@ -146,8 +142,6 @@ def preview_dataset(
 ) -> DatasetPreviewResponse:
     """
     Preview the first rows of a dataset.
-
-    This is useful for frontend dashboards before users write SQL manually.
     """
     query_engine = DuckDBQueryEngine(db)
 
@@ -175,6 +169,56 @@ def preview_dataset(
             detail=str(error),
         ) from error
 
+
+@router.get("/{dataset_id}/download-url", response_model=DatasetDownloadUrlResponse)
+def get_dataset_download_url(
+    dataset_id: UUID,
+    expires_in_seconds: int = Query(default=900, ge=60, le=3600),
+    db: Session = Depends(get_db),
+) -> DatasetDownloadUrlResponse:
+    """
+    Generate a temporary download URL for the raw dataset object.
+
+    For S3 storage, this returns a presigned S3 URL.
+    For local storage, this returns a local file URI for development.
+    """
+    service = DatasetService(db)
+    dataset = service.get_dataset_by_id(dataset_id)
+
+    if dataset is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found",
+        )
+
+    storage = get_object_storage()
+
+    if not storage.exists(dataset.s3_key):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Dataset object not found for key: {dataset.s3_key}",
+        )
+
+    try:
+        download_url = storage.generate_download_url(
+            dataset.s3_key,
+            expires_in_seconds=expires_in_seconds,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not generate download URL: {error}",
+        ) from error
+
+    return DatasetDownloadUrlResponse(
+        dataset_id=dataset.id,
+        object_key=dataset.s3_key,
+        download_url=download_url,
+        expires_in_seconds=expires_in_seconds,
+        storage_backend=type(storage).__name__,
+    )
+
+
 @router.get("/{dataset_id}", response_model=DatasetRead)
 def get_dataset(
     dataset_id: UUID,
@@ -182,8 +226,6 @@ def get_dataset(
 ) -> DatasetRead:
     """
     Fetch a single dataset by ID.
-
-    This endpoint will be used for dataset detail pages and query execution.
     """
     service = DatasetService(db)
     dataset = service.get_dataset_by_id(dataset_id)

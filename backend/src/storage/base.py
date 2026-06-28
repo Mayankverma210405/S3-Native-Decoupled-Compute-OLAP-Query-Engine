@@ -18,9 +18,6 @@ class ObjectStorage(Protocol):
     ) -> str:
         """
         Save a file and return an object key.
-
-        Example:
-            datasets/uuid-sales.csv
         """
         ...
 
@@ -33,11 +30,15 @@ class ObjectStorage(Protocol):
     def get_read_uri(self, object_key: str) -> str:
         """
         Return a URI/path that DuckDB can read.
+        """
+        ...
 
-        Local example:
-            C:/project/backend/storage/datasets/file.csv
-
-        Future S3 example:
-            s3://bucket/datasets/file.csv
+    def generate_download_url(
+        self,
+        object_key: str,
+        expires_in_seconds: int = 900,
+    ) -> str:
+        """
+        Generate a temporary URL/path for downloading an object.
         """
         ...

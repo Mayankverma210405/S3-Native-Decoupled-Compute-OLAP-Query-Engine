@@ -44,12 +44,6 @@ class S3ObjectStorage:
         original_filename: str,
         prefix: str = "datasets",
     ) -> str:
-        """
-        Upload a local file to S3 and return the object key.
-
-        Example:
-            datasets/uuid-sales.csv
-        """
         source = Path(source_path)
 
         if not source.exists():
@@ -74,9 +68,6 @@ class S3ObjectStorage:
         return object_key
 
     def exists(self, object_key: str) -> bool:
-        """
-        Return True if the S3 object exists.
-        """
         try:
             self.client.head_object(
                 Bucket=self.bucket_name,
@@ -93,19 +84,29 @@ class S3ObjectStorage:
             raise
 
     def get_read_uri(self, object_key: str) -> str:
-        """
-        Return an S3 URI.
-
-        DuckDB S3 querying will use this later after we configure DuckDB's
-        S3/httpfs settings.
-        """
         self._validate_object_key(object_key)
         return f"s3://{self.bucket_name}/{object_key}"
 
+    def generate_download_url(
+        self,
+        object_key: str,
+        expires_in_seconds: int = 900,
+    ) -> str:
+        """
+        Generate a temporary presigned S3 URL for downloading an object.
+        """
+        self._validate_object_key(object_key)
+
+        return self.client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": self.bucket_name,
+                "Key": object_key,
+            },
+            ExpiresIn=expires_in_seconds,
+        )
+
     def _safe_filename(self, filename: str) -> str:
-        """
-        Convert user-provided filename into a safer storage filename.
-        """
         cleaned = Path(filename).name.strip().replace(" ", "_")
 
         if not cleaned:
@@ -114,9 +115,6 @@ class S3ObjectStorage:
         return cleaned
 
     def _validate_object_key(self, object_key: str) -> None:
-        """
-        Reject unsafe object keys.
-        """
         key_path = Path(object_key)
 
         if key_path.is_absolute() or ".." in key_path.parts:

@@ -8,8 +8,6 @@ class LocalObjectStorage:
     Local filesystem-backed object storage.
 
     This mimics S3-style object storage during local development.
-    Later, we can replace this with an S3 implementation while keeping
-    the rest of the application flow mostly unchanged.
     """
 
     def __init__(self, root_path: str | Path = "storage") -> None:
@@ -22,13 +20,6 @@ class LocalObjectStorage:
         original_filename: str,
         prefix: str = "datasets",
     ) -> str:
-        """
-        Save a local file into object-storage-style layout.
-
-        Returns:
-            Object key such as:
-            datasets/550e8400-sales.csv
-        """
         source = Path(source_path)
 
         if not source.exists():
@@ -48,23 +39,30 @@ class LocalObjectStorage:
         return object_key
 
     def exists(self, object_key: str) -> bool:
-        """Check whether an object exists in local storage."""
         return self._resolve_key(object_key).exists()
 
     def get_path(self, object_key: str) -> Path:
-        """Return the local filesystem path for an object key."""
         return self._resolve_key(object_key)
 
     def get_read_uri(self, object_key: str) -> str:
-        """
-        Return an absolute local file path that DuckDB can read.
-        """
         return self.get_path(object_key).resolve().as_posix()
 
+    def generate_download_url(
+        self,
+        object_key: str,
+        expires_in_seconds: int = 900,
+    ) -> str:
+        """
+        Return a local file URI for development.
+
+        The expiry value is ignored for local storage.
+        """
+        if not self.exists(object_key):
+            raise FileNotFoundError(f"Object not found: {object_key}")
+
+        return self.get_path(object_key).resolve().as_uri()
+
     def _safe_filename(self, filename: str) -> str:
-        """
-        Convert user-provided filename into a safer storage filename.
-        """
         cleaned = Path(filename).name.strip().replace(" ", "_")
 
         if not cleaned:
@@ -73,12 +71,6 @@ class LocalObjectStorage:
         return cleaned
 
     def _resolve_key(self, object_key: str) -> Path:
-        """
-        Convert an object key into a local path safely.
-
-        This blocks unsafe keys like:
-        ../../secret.txt
-        """
         key_path = Path(object_key)
 
         if key_path.is_absolute() or ".." in key_path.parts:
