@@ -26,10 +26,16 @@ class S3ObjectStorage:
         if not self.bucket_name:
             raise ValueError("S3_BUCKET_NAME must be configured when using S3 storage")
 
-        self.client = boto3.client(
-            "s3",
-            region_name=self.region_name,
-        )
+        client_kwargs = {
+            "service_name": "s3",
+            "region_name": self.region_name,
+        }
+
+        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+            client_kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
+            client_kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
+
+        self.client = boto3.client(**client_kwargs)
 
     def save_file(
         self,
