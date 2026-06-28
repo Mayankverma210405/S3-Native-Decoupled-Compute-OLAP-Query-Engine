@@ -5,6 +5,26 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class DatasetCreate(BaseModel):
+    """
+    Request schema for registering dataset metadata.
+
+    Later, CSV upload code will generate this metadata automatically.
+    For now, we send it manually to test the backend flow.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str = Field(min_length=1, max_length=255)
+    original_filename: str = Field(min_length=1, max_length=255)
+    storage_format: str = "csv"
+    content_type: str = "text/csv"
+    file_size_bytes: int = Field(ge=0)
+    row_count: int = Field(ge=0)
+    column_count: int = Field(ge=0)
+    dataset_schema: dict[str, Any] = Field(alias="schema_json")
+
+
 class DatasetRead(BaseModel):
     """
     Response schema for a dataset.

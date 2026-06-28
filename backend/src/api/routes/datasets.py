@@ -1,17 +1,36 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from src.database.repositories.dataset_repository import DatasetRepository
 from src.database.session import get_db
-from src.schemas.dataset import DatasetListResponse, DatasetRead
+from src.schemas.dataset import DatasetCreate, DatasetListResponse, DatasetRead
+from src.services.dataset_service import DatasetService
 
 
 router = APIRouter(
     prefix="/datasets",
     tags=["datasets"],
 )
+
+
+@router.post(
+    "",
+    response_model=DatasetRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_dataset(
+    payload: DatasetCreate,
+    db: Session = Depends(get_db),
+) -> DatasetRead:
+    """
+    Register dataset metadata.
+
+    This endpoint creates a metadata record for a dataset.
+    Full CSV upload and S3 storage will be added in a later module.
+    """
+    service = DatasetService(db)
+    return service.register_dataset(payload)
 
 
 @router.get("", response_model=DatasetListResponse)
@@ -25,8 +44,8 @@ def list_datasets(
 
     This endpoint will be used by the dashboard to show available datasets.
     """
-    repository = DatasetRepository(db)
-    datasets = repository.list_datasets(limit=limit, offset=offset)
+    service = DatasetService(db)
+    datasets = service.list_datasets(limit=limit, offset=offset)
 
     return DatasetListResponse(
         items=datasets,
@@ -46,8 +65,8 @@ def get_dataset(
 
     This endpoint will be used for dataset detail pages and query execution.
     """
-    repository = DatasetRepository(db)
-    dataset = repository.get_dataset_by_id(dataset_id)
+    service = DatasetService(db)
+    dataset = service.get_dataset_by_id(dataset_id)
 
     if dataset is None:
         raise HTTPException(
