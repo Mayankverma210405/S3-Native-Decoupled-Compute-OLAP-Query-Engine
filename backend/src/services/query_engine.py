@@ -88,6 +88,56 @@ class DuckDBQueryEngine:
             "row_count": len(rows),
             "execution_time_ms": execution_time_ms,
         }
+        
+    def preview_dataset(
+        self,
+        *,
+        dataset_id: UUID,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """
+        Return a small preview of dataset rows.
+
+        Preview is useful for dashboards and does not increment query_count.
+        """
+        if limit < 1 or limit > 100:
+            raise QueryExecutionError("Preview limit must be between 1 and 100")
+
+        dataset, object_path, _ = self._prepare_dataset_query(
+            dataset_id=dataset_id,
+            sql="SELECT * FROM dataset",
+        )
+
+        sql = f"SELECT * FROM dataset LIMIT {limit}"
+
+        started_at = time.perf_counter()
+
+        try:
+            with duckdb.connect(database=":memory:") as connection:
+                self._register_csv_as_dataset_table(connection, object_path)
+
+                result = connection.execute(sql)
+                columns = [description[0] for description in result.description]
+                raw_rows = result.fetchall()
+
+        except duckdb.Error as error:
+            raise QueryExecutionError(str(error)) from error
+
+        execution_time_ms = round((time.perf_counter() - started_at) * 1000, 2)
+
+        rows = [
+            {column: value for column, value in zip(columns, row, strict=False)}
+            for row in raw_rows
+        ]
+
+        return {
+            "dataset_id": dataset.id,
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "limit": limit,
+            "execution_time_ms": execution_time_ms,
+        }
 
     def explain_query(
         self,

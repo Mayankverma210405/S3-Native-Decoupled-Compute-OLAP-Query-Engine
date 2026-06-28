@@ -6,10 +6,21 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 
 from src.database.session import get_db
-from src.schemas.dataset import DatasetCreate, DatasetListResponse, DatasetRead
+from src.schemas.dataset import (
+    DatasetCreate,
+    DatasetListResponse,
+    DatasetPreviewResponse,
+    DatasetRead,
+)
 from src.services.csv_analyzer import CsvAnalyzer
 from src.services.dataset_service import DatasetService
 from src.storage.local_storage import LocalObjectStorage
+from src.services.query_engine import (
+    DatasetNotFoundError,
+    DatasetObjectNotFoundError,
+    DuckDBQueryEngine,
+    QueryExecutionError,
+)
 
 router = APIRouter(
     prefix="/datasets",
@@ -127,7 +138,42 @@ def list_datasets(
         limit=limit,
         offset=offset,
     )
+@router.get("/{dataset_id}/preview", response_model=DatasetPreviewResponse)
+def preview_dataset(
+    dataset_id: UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> DatasetPreviewResponse:
+    """
+    Preview the first rows of a dataset.
 
+    This is useful for frontend dashboards before users write SQL manually.
+    """
+    query_engine = DuckDBQueryEngine(db)
+
+    try:
+        return query_engine.preview_dataset(
+            dataset_id=dataset_id,
+            limit=limit,
+        )
+
+    except DatasetNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except DatasetObjectNotFoundError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+
+    except QueryExecutionError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
 
 @router.get("/{dataset_id}", response_model=DatasetRead)
 def get_dataset(

@@ -54,6 +54,19 @@ class DatasetRead(BaseModel):
     updated_at: datetime
 
 
+class DatasetPreviewResponse(BaseModel):
+    """
+    Response schema for previewing dataset rows.
+    """
+
+    dataset_id: UUID
+    columns: list[str]
+    rows: list[dict[str, Any]]
+    row_count: int
+    limit: int
+    execution_time_ms: float
+
+
 class DatasetListResponse(BaseModel):
     """
     Response schema for listing datasets.
