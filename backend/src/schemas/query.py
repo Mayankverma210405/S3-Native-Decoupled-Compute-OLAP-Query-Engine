@@ -26,3 +26,15 @@ class QueryResponse(BaseModel):
     rows: list[dict[str, Any]]
     row_count: int
     execution_time_ms: float
+
+
+class QueryExplainResponse(BaseModel):
+    """
+    Response schema for DuckDB query plans.
+    """
+
+    dataset_id: UUID
+    sql: str
+    plan: list[dict[str, Any]]
+    plan_text: str
+    execution_time_ms: float

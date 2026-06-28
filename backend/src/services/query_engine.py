@@ -53,19 +53,10 @@ class DuckDBQueryEngine:
         """
         Execute a read-only SQL query against one dataset.
         """
-        dataset = self.dataset_repository.get_dataset_by_id(dataset_id)
-
-        if dataset is None:
-            raise DatasetNotFoundError(f"Dataset not found: {dataset_id}")
-
-        object_path = self.storage.get_path(dataset.s3_key)
-
-        if not object_path.exists():
-            raise DatasetObjectNotFoundError(
-                f"Dataset object not found for key: {dataset.s3_key}"
-            )
-
-        safe_sql = self._validate_and_normalize_sql(sql)
+        dataset, object_path, safe_sql = self._prepare_dataset_query(
+            dataset_id=dataset_id,
+            sql=sql,
+        )
 
         started_at = time.perf_counter()
 
@@ -97,6 +88,81 @@ class DuckDBQueryEngine:
             "row_count": len(rows),
             "execution_time_ms": execution_time_ms,
         }
+
+    def explain_query(
+        self,
+        *,
+        dataset_id: UUID,
+        sql: str,
+    ) -> dict[str, Any]:
+        """
+        Return DuckDB's query plan for a read-only SQL query.
+
+        EXPLAIN does not count as a dataset query execution because it does
+        not return the query result rows to the user.
+        """
+        dataset, object_path, safe_sql = self._prepare_dataset_query(
+            dataset_id=dataset_id,
+            sql=sql,
+        )
+
+        started_at = time.perf_counter()
+
+        try:
+            with duckdb.connect(database=":memory:") as connection:
+                self._register_csv_as_dataset_table(connection, object_path)
+
+                result = connection.execute(f"EXPLAIN {safe_sql}")
+                columns = [description[0] for description in result.description]
+                raw_rows = result.fetchall()
+
+        except duckdb.Error as error:
+            raise QueryExecutionError(str(error)) from error
+
+        execution_time_ms = round((time.perf_counter() - started_at) * 1000, 2)
+
+        plan_rows = [
+            {column: value for column, value in zip(columns, row, strict=False)}
+            for row in raw_rows
+        ]
+
+        plan_text = "\n".join(
+            " | ".join(str(value) for value in row if value is not None)
+            for row in raw_rows
+        )
+
+        return {
+            "dataset_id": dataset.id,
+            "sql": safe_sql,
+            "plan": plan_rows,
+            "plan_text": plan_text,
+            "execution_time_ms": execution_time_ms,
+        }
+
+    def _prepare_dataset_query(
+        self,
+        *,
+        dataset_id: UUID,
+        sql: str,
+    ) -> tuple[Any, Path, str]:
+        """
+        Validate dataset existence, file existence, and SQL safety.
+        """
+        dataset = self.dataset_repository.get_dataset_by_id(dataset_id)
+
+        if dataset is None:
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id}")
+
+        object_path = self.storage.get_path(dataset.s3_key)
+
+        if not object_path.exists():
+            raise DatasetObjectNotFoundError(
+                f"Dataset object not found for key: {dataset.s3_key}"
+            )
+
+        safe_sql = self._validate_and_normalize_sql(sql)
+
+        return dataset, object_path, safe_sql
 
     def _register_csv_as_dataset_table(
         self,

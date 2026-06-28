@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.database.session import get_db
-from src.schemas.query import QueryRequest, QueryResponse
+from src.schemas.query import QueryExplainResponse, QueryRequest, QueryResponse
 from src.services.query_engine import (
     DatasetNotFoundError,
     DatasetObjectNotFoundError,
@@ -35,6 +35,48 @@ def execute_query(
 
     try:
         return query_engine.execute_query(
+            dataset_id=payload.dataset_id,
+            sql=payload.sql,
+        )
+
+    except DatasetNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except DatasetObjectNotFoundError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+
+    except QueryExecutionError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+
+@router.post(
+    "/explain",
+    response_model=QueryExplainResponse,
+    status_code=status.HTTP_200_OK,
+)
+def explain_query(
+    payload: QueryRequest,
+    db: Session = Depends(get_db),
+) -> QueryExplainResponse:
+    """
+    Return DuckDB's query plan for a registered dataset query.
+
+    This is useful for understanding how the analytical engine will execute
+    the query.
+    """
+    query_engine = DuckDBQueryEngine(db)
+
+    try:
+        return query_engine.explain_query(
             dataset_id=payload.dataset_id,
             sql=payload.sql,
         )
