@@ -48,3 +48,5 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+# Local development object storage
+backend/storage/

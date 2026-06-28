@@ -23,10 +23,10 @@ class DatasetService:
 
     def register_dataset(self, payload: DatasetCreate) -> Dataset:
         """
-        Register dataset metadata in PostgreSQL.
+        Register dataset metadata manually.
 
         For now, this creates a generated storage key.
-        Later, this key will point to the real S3 object location.
+        Later, manual registration may be removed or restricted.
         """
         s3_key = self._generate_storage_key(payload.original_filename)
 
@@ -49,12 +49,14 @@ class DatasetService:
         name: str,
         original_filename: str,
         analysis: CsvAnalysisResult,
+        s3_key: str,
     ) -> Dataset:
         """
         Register a dataset using metadata extracted from a CSV file.
-        """
-        s3_key = self._generate_storage_key(original_filename)
 
+        The s3_key must come from the storage layer.
+        This ensures the database points to the actual saved object.
+        """
         return self.repository.create_dataset(
             name=name,
             original_filename=original_filename,
@@ -80,8 +82,6 @@ class DatasetService:
 
         Example:
         datasets/9fe2a1-sales.csv
-
-        Later this will become the actual S3 object key.
         """
         safe_filename = Path(original_filename).name.replace(" ", "_")
         return f"datasets/{uuid4()}-{safe_filename}"

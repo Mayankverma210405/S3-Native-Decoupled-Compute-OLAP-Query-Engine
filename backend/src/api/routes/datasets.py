@@ -9,7 +9,7 @@ from src.database.session import get_db
 from src.schemas.dataset import DatasetCreate, DatasetListResponse, DatasetRead
 from src.services.csv_analyzer import CsvAnalyzer
 from src.services.dataset_service import DatasetService
-
+from src.storage.local_storage import LocalObjectStorage
 
 router = APIRouter(
     prefix="/datasets",
@@ -59,6 +59,12 @@ async def upload_dataset(
         analyzer = CsvAnalyzer()
         analysis = analyzer.analyze(temp_path)
 
+        storage = LocalObjectStorage()
+        object_key = storage.save_file(
+            source_path=temp_path,
+            original_filename=original_filename,
+        )
+
         dataset_name = name or Path(original_filename).stem
 
         service = DatasetService(db)
@@ -66,6 +72,7 @@ async def upload_dataset(
             name=dataset_name,
             original_filename=original_filename,
             analysis=analysis,
+            s3_key=object_key,
         )
 
     except ValueError as error:
