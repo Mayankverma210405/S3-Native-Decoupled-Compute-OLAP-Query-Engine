@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.database.repositories.dataset_repository import DatasetRepository
+from src.database.repositories.query_run_repository import QueryRunRepository
 from src.storage.base import ObjectStorage
 from src.storage.factory import get_object_storage
+
 
 
 class QueryExecutionError(Exception):
@@ -43,6 +45,7 @@ class DuckDBQueryEngine:
         storage: ObjectStorage | None = None,
     ) -> None:
         self.dataset_repository = DatasetRepository(db)
+        self.query_run_repository = QueryRunRepository(db)
         self.storage = storage or get_object_storage()
 
     def execute_query(
@@ -81,6 +84,15 @@ class DuckDBQueryEngine:
         ]
 
         self.dataset_repository.mark_dataset_queried(dataset.id)
+
+        self.query_run_repository.create_query_run(
+            dataset_id=dataset.id,
+            sql_text=safe_sql,
+            status="success",
+            storage_backend=type(self.storage).__name__,
+            row_count=len(rows),
+            execution_time_ms=execution_time_ms,
+        )
 
         return {
             "dataset_id": dataset.id,

@@ -6,6 +6,7 @@ from src.schemas.dataset import (
     DatasetRead,
 )
 from src.schemas.query import QueryExplainResponse, QueryRequest, QueryResponse
+from src.schemas.query_run import QueryRunListResponse, QueryRunRead
 
 __all__ = [
     "DatasetCreate",
@@ -16,4 +17,6 @@ __all__ = [
     "QueryExplainResponse",
     "QueryRequest",
     "QueryResponse",
+    "QueryRunListResponse",
+    "QueryRunRead",
 ]
