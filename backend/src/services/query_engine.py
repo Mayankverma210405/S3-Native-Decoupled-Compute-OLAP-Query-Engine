@@ -87,6 +87,8 @@ class DuckDBQueryEngine:
             for row in raw_rows
         ]
 
+        self.dataset_repository.mark_dataset_queried(dataset.id)
+
         return {
             "dataset_id": dataset.id,
             "sql": safe_sql,

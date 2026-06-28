@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -76,6 +77,26 @@ class DatasetRepository:
             return None
 
         dataset.status = status
+
+        try:
+            self.db.commit()
+            self.db.refresh(dataset)
+            return dataset
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def mark_dataset_queried(self, dataset_id: UUID) -> Dataset | None:
+        """
+        Record a successful query execution for a dataset.
+        """
+        dataset = self.get_dataset_by_id(dataset_id)
+
+        if dataset is None:
+            return None
+
+        dataset.query_count = (dataset.query_count or 0) + 1
+        dataset.last_query_at = datetime.now(timezone.utc)
 
         try:
             self.db.commit()
