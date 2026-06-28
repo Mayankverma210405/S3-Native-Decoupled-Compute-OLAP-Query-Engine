@@ -14,7 +14,7 @@ from src.schemas.dataset import (
 )
 from src.services.csv_analyzer import CsvAnalyzer
 from src.services.dataset_service import DatasetService
-from src.storage.local_storage import LocalObjectStorage
+from src.storage.factory import get_object_storage
 from src.services.query_engine import (
     DatasetNotFoundError,
     DatasetObjectNotFoundError,
@@ -70,7 +70,7 @@ async def upload_dataset(
         analyzer = CsvAnalyzer()
         analysis = analyzer.analyze(temp_path)
 
-        storage = LocalObjectStorage()
+        storage = get_object_storage()
         object_key = storage.save_file(
             source_path=temp_path,
             original_filename=original_filename,

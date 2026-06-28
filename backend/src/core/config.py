@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     ENVIRONMENT: str = "development"
+    STORAGE_BACKEND: str = "local"
+    LOCAL_STORAGE_PATH: str = "storage"
 
     model_config = SettingsConfigDict(
         env_file=".env",

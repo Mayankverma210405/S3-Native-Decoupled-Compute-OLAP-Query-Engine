@@ -8,7 +8,8 @@ import duckdb
 from sqlalchemy.orm import Session
 
 from src.database.repositories.dataset_repository import DatasetRepository
-from src.storage.local_storage import LocalObjectStorage
+from src.storage.base import ObjectStorage
+from src.storage.factory import get_object_storage
 
 
 class QueryExecutionError(Exception):
@@ -39,10 +40,10 @@ class DuckDBQueryEngine:
     def __init__(
         self,
         db: Session,
-        storage: LocalObjectStorage | None = None,
+        storage: ObjectStorage | None = None,
     ) -> None:
         self.dataset_repository = DatasetRepository(db)
-        self.storage = storage or LocalObjectStorage()
+        self.storage = storage or get_object_storage()
 
     def execute_query(
         self,
@@ -203,16 +204,15 @@ class DuckDBQueryEngine:
         if dataset is None:
             raise DatasetNotFoundError(f"Dataset not found: {dataset_id}")
 
-        object_path = self.storage.get_path(dataset.s3_key)
-
-        if not object_path.exists():
+        if not self.storage.exists(dataset.s3_key):
             raise DatasetObjectNotFoundError(
                 f"Dataset object not found for key: {dataset.s3_key}"
             )
 
+        read_uri = self.storage.get_read_uri(dataset.s3_key)
         safe_sql = self._validate_and_normalize_sql(sql)
 
-        return dataset, object_path, safe_sql
+        return dataset, Path(read_uri), safe_sql
 
     def _register_csv_as_dataset_table(
         self,
@@ -222,13 +222,13 @@ class DuckDBQueryEngine:
         """
         Register the stored CSV file as a DuckDB view named 'dataset'.
         """
-        csv_path = object_path.resolve().as_posix().replace("'", "''")
+        csv_uri = object_path.resolve().as_posix().replace("'", "''")
 
         connection.execute(
             f"""
             CREATE VIEW dataset AS
             SELECT *
-            FROM read_csv_auto('{csv_path}', header = true)
+            FROM read_csv_auto('{csv_uri}', header = true)
             """
         )
 

@@ -55,6 +55,12 @@ class LocalObjectStorage:
         """Return the local filesystem path for an object key."""
         return self._resolve_key(object_key)
 
+    def get_read_uri(self, object_key: str) -> str:
+        """
+        Return an absolute local file path that DuckDB can read.
+        """
+        return self.get_path(object_key).resolve().as_posix()
+
     def _safe_filename(self, filename: str) -> str:
         """
         Convert user-provided filename into a safer storage filename.
