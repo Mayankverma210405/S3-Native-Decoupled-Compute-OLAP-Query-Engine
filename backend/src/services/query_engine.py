@@ -1,12 +1,12 @@
 import re
 import time
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 import duckdb
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.database.repositories.dataset_repository import DatasetRepository
 from src.storage.base import ObjectStorage
 from src.storage.factory import get_object_storage
@@ -54,7 +54,7 @@ class DuckDBQueryEngine:
         """
         Execute a read-only SQL query against one dataset.
         """
-        dataset, object_path, safe_sql = self._prepare_dataset_query(
+        dataset, read_uri, safe_sql = self._prepare_dataset_query(
             dataset_id=dataset_id,
             sql=sql,
         )
@@ -63,7 +63,8 @@ class DuckDBQueryEngine:
 
         try:
             with duckdb.connect(database=":memory:") as connection:
-                self._register_csv_as_dataset_table(connection, object_path)
+                self._configure_duckdb_storage(connection, read_uri)
+                self._register_csv_as_dataset_table(connection, read_uri)
 
                 result = connection.execute(safe_sql)
                 columns = [description[0] for description in result.description]
@@ -89,7 +90,7 @@ class DuckDBQueryEngine:
             "row_count": len(rows),
             "execution_time_ms": execution_time_ms,
         }
-        
+
     def preview_dataset(
         self,
         *,
@@ -104,7 +105,7 @@ class DuckDBQueryEngine:
         if limit < 1 or limit > 100:
             raise QueryExecutionError("Preview limit must be between 1 and 100")
 
-        dataset, object_path, _ = self._prepare_dataset_query(
+        dataset, read_uri, _ = self._prepare_dataset_query(
             dataset_id=dataset_id,
             sql="SELECT * FROM dataset",
         )
@@ -115,7 +116,8 @@ class DuckDBQueryEngine:
 
         try:
             with duckdb.connect(database=":memory:") as connection:
-                self._register_csv_as_dataset_table(connection, object_path)
+                self._configure_duckdb_storage(connection, read_uri)
+                self._register_csv_as_dataset_table(connection, read_uri)
 
                 result = connection.execute(sql)
                 columns = [description[0] for description in result.description]
@@ -152,7 +154,7 @@ class DuckDBQueryEngine:
         EXPLAIN does not count as a dataset query execution because it does
         not return the query result rows to the user.
         """
-        dataset, object_path, safe_sql = self._prepare_dataset_query(
+        dataset, read_uri, safe_sql = self._prepare_dataset_query(
             dataset_id=dataset_id,
             sql=sql,
         )
@@ -161,7 +163,8 @@ class DuckDBQueryEngine:
 
         try:
             with duckdb.connect(database=":memory:") as connection:
-                self._register_csv_as_dataset_table(connection, object_path)
+                self._configure_duckdb_storage(connection, read_uri)
+                self._register_csv_as_dataset_table(connection, read_uri)
 
                 result = connection.execute(f"EXPLAIN {safe_sql}")
                 columns = [description[0] for description in result.description]
@@ -195,9 +198,9 @@ class DuckDBQueryEngine:
         *,
         dataset_id: UUID,
         sql: str,
-    ) -> tuple[Any, Path, str]:
+    ) -> tuple[Any, str, str]:
         """
-        Validate dataset existence, file existence, and SQL safety.
+        Validate dataset existence, object existence, and SQL safety.
         """
         dataset = self.dataset_repository.get_dataset_by_id(dataset_id)
 
@@ -212,23 +215,63 @@ class DuckDBQueryEngine:
         read_uri = self.storage.get_read_uri(dataset.s3_key)
         safe_sql = self._validate_and_normalize_sql(sql)
 
-        return dataset, Path(read_uri), safe_sql
+        return dataset, read_uri, safe_sql
+
+    def _configure_duckdb_storage(
+        self,
+        connection: duckdb.DuckDBPyConnection,
+        read_uri: str,
+    ) -> None:
+        """
+        Configure DuckDB for the storage backend used by the dataset.
+
+        Local files do not need extra configuration.
+        S3 files need DuckDB's httpfs extension and S3 credentials.
+        """
+        if not read_uri.startswith("s3://"):
+            return
+
+        if not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
+            raise QueryExecutionError(
+                "AWS credentials are required for DuckDB S3 reads"
+            )
+
+        connection.execute("INSTALL httpfs")
+        connection.execute("LOAD httpfs")
+
+        key_id = self._quote_duckdb_string(settings.AWS_ACCESS_KEY_ID)
+        secret = self._quote_duckdb_string(settings.AWS_SECRET_ACCESS_KEY)
+        region = self._quote_duckdb_string(settings.AWS_REGION)
+        endpoint = self._quote_duckdb_string(f"s3.{settings.AWS_REGION}.amazonaws.com")
+
+        connection.execute(
+            f"""
+            CREATE OR REPLACE SECRET s3_query_secret (
+                TYPE s3,
+                PROVIDER config,
+                KEY_ID '{key_id}',
+                SECRET '{secret}',
+                REGION '{region}',
+                ENDPOINT '{endpoint}'
+            )
+            """
+        )
 
     def _register_csv_as_dataset_table(
         self,
         connection: duckdb.DuckDBPyConnection,
-        object_path: Path,
+        read_uri: str,
     ) -> None:
         """
         Register the stored CSV file as a DuckDB view named 'dataset'.
         """
-        csv_uri = object_path.resolve().as_posix().replace("'", "''")
+        escaped_uri = self._quote_duckdb_string(read_uri)
 
         connection.execute(
             f"""
             CREATE VIEW dataset AS
             SELECT *
-            FROM read_csv_auto('{csv_uri}', header = true)
+            FROM read_csv_auto('{escaped_uri}', header = true)
             """
         )
 
@@ -278,3 +321,9 @@ class DuckDBQueryEngine:
             raise QueryExecutionError("Multiple SQL statements are not allowed")
 
         return normalized_sql
+
+    def _quote_duckdb_string(self, value: str) -> str:
+        """
+        Escape single quotes before interpolating into DuckDB SQL strings.
+        """
+        return value.replace("'", "''")
