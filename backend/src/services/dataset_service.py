@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.database.models.dataset import Dataset
 from src.database.repositories.dataset_repository import DatasetRepository
 from src.schemas.dataset import DatasetCreate
+from src.services.csv_analyzer import CsvAnalysisResult
 
 
 class DatasetService:
@@ -42,6 +43,31 @@ class DatasetService:
             status="registered",
         )
 
+    def register_analyzed_dataset(
+        self,
+        *,
+        name: str,
+        original_filename: str,
+        analysis: CsvAnalysisResult,
+    ) -> Dataset:
+        """
+        Register a dataset using metadata extracted from a CSV file.
+        """
+        s3_key = self._generate_storage_key(original_filename)
+
+        return self.repository.create_dataset(
+            name=name,
+            original_filename=original_filename,
+            s3_key=s3_key,
+            file_size_bytes=analysis.file_size_bytes,
+            row_count=analysis.row_count,
+            column_count=analysis.column_count,
+            schema_json=analysis.schema_json,
+            storage_format="csv",
+            content_type="text/csv",
+            status="registered",
+        )
+
     def list_datasets(self, *, limit: int = 50, offset: int = 0) -> list[Dataset]:
         return self.repository.list_datasets(limit=limit, offset=offset)
 
@@ -50,10 +76,12 @@ class DatasetService:
 
     def _generate_storage_key(self, original_filename: str) -> str:
         """
-        Generate a stable object-storage-style key.
+        Generate an object-storage-style key.
 
         Example:
         datasets/9fe2a1-sales.csv
+
+        Later this will become the actual S3 object key.
         """
         safe_filename = Path(original_filename).name.replace(" ", "_")
         return f"datasets/{uuid4()}-{safe_filename}"

@@ -1,10 +1,13 @@
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from src.database.session import get_db
 from src.schemas.dataset import DatasetCreate, DatasetListResponse, DatasetRead
+from src.services.csv_analyzer import CsvAnalyzer
 from src.services.dataset_service import DatasetService
 
 
@@ -12,6 +15,70 @@ router = APIRouter(
     prefix="/datasets",
     tags=["datasets"],
 )
+
+
+@router.post(
+    "/upload",
+    response_model=DatasetRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_dataset(
+    file: UploadFile = File(...),
+    name: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+) -> DatasetRead:
+    """
+    Upload a CSV file, analyze it, and register dataset metadata.
+
+    In this version, we analyze the CSV and store metadata in PostgreSQL.
+    S3 upload will be added in the next storage module.
+    """
+    original_filename = Path(file.filename or "").name
+
+    if not original_filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file must have a filename",
+        )
+
+    if Path(original_filename).suffix.lower() != ".csv":
+        raise HTTPException(
+            status_code=400,
+            detail="Only CSV files are supported",
+        )
+
+    temp_path: Path | None = None
+
+    try:
+        with NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+            temp_path = Path(temp_file.name)
+
+            while chunk := await file.read(1024 * 1024):
+                temp_file.write(chunk)
+
+        analyzer = CsvAnalyzer()
+        analysis = analyzer.analyze(temp_path)
+
+        dataset_name = name or Path(original_filename).stem
+
+        service = DatasetService(db)
+        return service.register_analyzed_dataset(
+            name=dataset_name,
+            original_filename=original_filename,
+            analysis=analysis,
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    finally:
+        await file.close()
+
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
 
 
 @router.post(
@@ -24,10 +91,10 @@ def register_dataset(
     db: Session = Depends(get_db),
 ) -> DatasetRead:
     """
-    Register dataset metadata.
+    Register dataset metadata manually.
 
-    This endpoint creates a metadata record for a dataset.
-    Full CSV upload and S3 storage will be added in a later module.
+    This is useful for development and testing.
+    Full CSV upload uses /datasets/upload.
     """
     service = DatasetService(db)
     return service.register_dataset(payload)
