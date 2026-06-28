@@ -1,11 +1,7 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:17
-
     container_name: olap-postgres
-
     restart: unless-stopped
 
     environment:
@@ -14,7 +10,7 @@ services:
       POSTGRES_DB: olap_engine
 
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
