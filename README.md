@@ -1,192 +1,284 @@
 # S3-Native Decoupled Compute OLAP Query Engine
 
-A portfolio-grade OLAP query engine that executes SQL directly over raw CSV datasets stored in Amazon S3, using DuckDB as the embedded compute engine, PostgreSQL for metadata, and a professional React dashboard for interaction and observability.
+<div align="center">
 
-The project demonstrates a modern **decoupled storage and compute architecture**: dataset files stay in object storage, while compute is performed on demand without loading raw data into a traditional database.
+# ⚡ S3-Native OLAP Engine
+
+### Query raw CSV datasets directly from Amazon S3 using DuckDB, FastAPI, PostgreSQL, and a high-end React dashboard.
+
+<br />
+
+![Python](https://img.shields.io/badge/Python-3.14-blue?style=for-the-badge\&logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge\&logo=fastapi)
+![DuckDB](https://img.shields.io/badge/DuckDB-OLAP-yellow?style=for-the-badge)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Metadata-4169E1?style=for-the-badge\&logo=postgresql)
+![Amazon S3](https://img.shields.io/badge/Amazon_S3-Object_Storage-569A31?style=for-the-badge\&logo=amazons3)
+![React](https://img.shields.io/badge/React-Frontend-61DAFB?style=for-the-badge\&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-UI-3178C6?style=for-the-badge\&logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-Build-646CFF?style=for-the-badge\&logo=vite)
+
+<br />
+
+**A cloud-native analytics engine that keeps data in S3 and brings compute to it on demand.**
+
+<br />
+
+[Live Demo](https://YOUR_VERCEL_FRONTEND_URL) · [Backend API](https://YOUR_RENDER_BACKEND_URL) · [API Docs](https://YOUR_RENDER_BACKEND_URL/docs) · [Architecture](#architecture) · [Local Setup](#local-development)
+
+</div>
 
 ---
 
-## Current Status
+## Overview
 
-**Backend core:** mostly complete
-**Frontend foundation:** in progress
-**Benchmark suite:** planned
-**Deployment:** planned
+**S3-Native Decoupled Compute OLAP Query Engine** is a portfolio-grade analytics platform that lets users upload CSV datasets to Amazon S3 and query them using SQL through DuckDB without loading the raw files into a traditional database.
 
-Current working capabilities:
+The project demonstrates a modern data architecture pattern:
 
-* Upload CSV datasets through API and UI
-* Store raw dataset files in a private S3 bucket
-* Analyze CSV metadata including row count, column count, file size, and inferred schema
-* Persist dataset metadata in PostgreSQL
-* Query S3-backed CSV files using DuckDB
-* Preview dataset rows
-* Generate temporary presigned download URLs
-* Track query execution history
-* Expose dashboard summary metrics
-* Display a professional React dashboard and functional datasets page
+```text
+Object Storage for raw durable data
++
+On-demand compute for SQL execution
++
+PostgreSQL metadata catalog
++
+Professional browser-based analytics UI
+```
+
+The backend stores raw files in S3, keeps metadata in PostgreSQL, and uses DuckDB to execute SQL directly over S3-backed CSV files. The frontend provides a polished dashboard, dataset catalog, query console, and system overview.
+
+---
+
+## Live Deployment
+
+| Layer             |             Service |              Status |
+| ----------------- | ------------------: | ------------------: |
+| Frontend          |              Vercel |            Deployed |
+| Backend API       |              Render |            Deployed |
+| Metadata Database | Supabase PostgreSQL |            Deployed |
+| Object Storage    |           Amazon S3 |            Deployed |
+| Query Engine      |              DuckDB | Embedded in backend |
+
+> Replace the placeholder URLs with actual deployment links after deployment is completed.
+
+```text
+Frontend: https://YOUR_VERCEL_FRONTEND_URL
+Backend:  https://YOUR_RENDER_BACKEND_URL
+Docs:     https://YOUR_RENDER_BACKEND_URL/docs
+```
+
+---
+
+## Product Preview
+
+### Dashboard
+
+A high-level system dashboard showing dataset volume, query activity, storage mode, uploaded data size, and recent query runs.
+
+```text
+Dashboard
+├── Total datasets
+├── Total rows
+├── Total queries
+├── Average execution time
+├── Active storage backend
+└── Latest query runs
+```
+
+### Datasets
+
+A functional dataset catalog for uploading, inspecting, previewing, and downloading CSV files.
+
+```text
+Datasets
+├── Upload CSV to S3
+├── View registered datasets
+├── Inspect schema metadata
+├── Preview rows
+└── Generate temporary download URL
+```
+
+### Query Console
+
+An interactive SQL console for querying S3-backed datasets directly from the browser.
+
+```text
+Query Console
+├── Select dataset
+├── Write SQL
+├── Execute query
+├── View result table
+├── Run EXPLAIN
+└── Inspect recent query history
+```
+
+### System Overview
+
+A safe runtime overview page that exposes operational information without leaking secrets.
+
+```text
+System
+├── Backend status
+├── API version
+├── Environment
+├── Storage backend
+├── AWS region
+├── S3 configuration status
+├── Database configuration status
+└── Catalog activity
+```
 
 ---
 
 ## Architecture
 
 ```text
-Browser UI
-   ↓
-React + Vite Frontend
-   ↓
-FastAPI Backend
-   ↓
-DuckDB Query Engine
-   ↓
-Amazon S3 CSV Files
-
-FastAPI Backend
-   ↓
-PostgreSQL Metadata Database
-```
-
-### Storage and Compute Flow
-
-```text
-CSV Upload
-   ↓
-FastAPI receives file
-   ↓
-CSV analyzer extracts metadata
-   ↓
-Raw file is uploaded to private S3
-   ↓
-Metadata is stored in PostgreSQL
-   ↓
-DuckDB reads CSV directly from S3
-   ↓
-SQL result is returned to the user
-   ↓
-Query run is recorded for observability
+┌──────────────────────────────────────────────┐
+│                 React Frontend               │
+│        Dashboard · Datasets · SQL Console     │
+└───────────────────────┬──────────────────────┘
+                        │
+                        │ HTTP API
+                        ▼
+┌──────────────────────────────────────────────┐
+│                FastAPI Backend               │
+│   Upload API · Query API · Dashboard API      │
+└───────────────┬───────────────────┬──────────┘
+                │                   │
+                │ Metadata           │ Raw CSV Objects
+                ▼                   ▼
+┌──────────────────────────┐   ┌──────────────────────────┐
+│      PostgreSQL DB        │   │        Amazon S3          │
+│ datasets · query_runs     │   │   datasets/*.csv          │
+└──────────────────────────┘   └─────────────┬────────────┘
+                                             │
+                                             │ s3:// read
+                                             ▼
+                                ┌──────────────────────────┐
+                                │          DuckDB           │
+                                │   SQL over S3 CSV files   │
+                                └──────────────────────────┘
 ```
 
 ---
 
-## Tech Stack
+## Core Data Flow
 
-### Backend
-
-* Python
-* FastAPI
-* DuckDB
-* PostgreSQL
-* SQLAlchemy
-* Alembic
-* AWS S3
-* boto3
-* uv
-* Docker Compose
-
-### Frontend
-
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
-* Lucide React icons
-
-### Cloud and Infrastructure
-
-* Amazon S3 for object storage
-* IAM least-privilege access policy
-* PostgreSQL local development through Docker
-* Planned deployment: Render backend, Vercel frontend, Supabase PostgreSQL
+```text
+1. User uploads CSV from the frontend
+2. FastAPI receives the file
+3. CSV analyzer extracts file size, row count, column count, and schema
+4. Raw CSV is uploaded to private Amazon S3
+5. Dataset metadata is stored in PostgreSQL
+6. User selects a dataset in the Query Console
+7. DuckDB reads the CSV directly from S3
+8. SQL result is returned to the frontend
+9. Query execution is recorded in PostgreSQL
+```
 
 ---
 
-## Core Features Implemented
+## Why This Project Exists
 
-### Dataset Upload
+Traditional analytics workflows often require data to be loaded into a database before it can be queried. This project explores a more cloud-native approach:
 
-Datasets can be uploaded as CSV files. The backend stores the original file in S3 and records metadata in PostgreSQL.
+* Keep raw data in object storage
+* Store only metadata in PostgreSQL
+* Run SQL compute on demand
+* Avoid duplicating raw files into a traditional database
+* Provide a clean interface for querying, previewing, and observing analytics workloads
 
-Implemented endpoint:
+This mirrors simplified ideas from modern lakehouse and serverless analytics systems.
+
+---
+
+## Key Features
+
+### S3-Native Dataset Storage
+
+Raw CSV files are stored in a private S3 bucket under the `datasets/` prefix.
 
 ```text
-POST /api/v1/datasets/upload
+s3://bucket-name/datasets/{uuid}-{filename}.csv
 ```
 
-Stored metadata includes:
+The backend uses a storage abstraction layer:
 
-* Dataset name
-* Original filename
-* S3 object key
+```text
+ObjectStorage
+├── LocalObjectStorage
+└── S3ObjectStorage
+```
+
+This allows local development and cloud deployment without rewriting application logic.
+
+---
+
+### CSV Metadata Analyzer
+
+Each uploaded CSV is analyzed before registration.
+
+Captured metadata:
+
 * File size
 * Row count
 * Column count
 * Inferred schema
-* Query count
-* Last query timestamp
+* Original filename
+* Storage object key
+* Upload status
 
 ---
 
-### S3 Object Storage Abstraction
+### PostgreSQL Metadata Catalog
 
-The project supports a storage abstraction layer with two implementations:
+The system stores dataset metadata and query history in PostgreSQL.
+
+Main tables:
 
 ```text
-LocalObjectStorage
-S3ObjectStorage
+datasets
+query_runs
 ```
 
-This allows the backend to run locally using filesystem storage and switch to Amazon S3 using configuration.
-
-Example configuration:
-
-```env
-STORAGE_BACKEND=s3
-AWS_REGION=ap-south-1
-S3_BUCKET_NAME=your-private-bucket-name
-```
+The metadata catalog allows the frontend to list datasets, show schema summaries, track usage, and power dashboard metrics.
 
 ---
 
-### DuckDB Query Execution Over S3
+### DuckDB Query Engine
 
-DuckDB reads CSV files directly from S3 through its S3/httpfs support.
+DuckDB executes SQL directly over S3-backed CSV files.
 
-Implemented endpoint:
+For v1, each selected dataset is exposed as a virtual table named:
 
-```text
-POST /api/v1/queries/execute
-```
-
-Example request:
-
-```json
-{
-  "dataset_id": "dataset-uuid",
-  "sql": "SELECT region, amount FROM dataset ORDER BY amount DESC"
-}
-```
-
-For v1, every selected dataset is exposed inside DuckDB as a table named:
-
-```text
+```sql
 dataset
 ```
 
-Example SQL:
+Example:
 
 ```sql
 SELECT *
 FROM dataset
-LIMIT 10;
+LIMIT 20;
+```
+
+Another example:
+
+```sql
+SELECT region, SUM(amount) AS total_amount
+FROM dataset
+GROUP BY region
+ORDER BY total_amount DESC;
 ```
 
 ---
 
-### Query Safety
+### Read-Only SQL Safety Layer
 
-The backend currently allows read-only SQL queries.
+The backend accepts only read-style analytical queries.
 
-Allowed query starts:
+Allowed starts:
 
 ```text
 SELECT
@@ -212,120 +304,75 @@ SET
 CALL
 ```
 
-This is a first-layer safety mechanism for the portfolio version. A deeper SQL sandbox can be added later.
+This keeps the v1 demo focused on safe analytical query execution.
 
 ---
 
-### Dataset Preview
+### EXPLAIN Plan Support
 
-Datasets can be previewed without counting the preview as a full query execution.
-
-Implemented endpoint:
-
-```text
-GET /api/v1/datasets/{dataset_id}/preview
-```
-
----
-
-### Query Explain
-
-DuckDB query plans can be inspected through an EXPLAIN endpoint.
-
-Implemented endpoint:
+The Query Console can request DuckDB query plans through:
 
 ```text
 POST /api/v1/queries/explain
 ```
 
-This helps demonstrate query planning, physical execution, and interview-level understanding of database internals.
+This helps demonstrate database internals, physical query planning, and OLAP execution behavior.
 
 ---
 
 ### Presigned Download URLs
 
-The backend can generate temporary download URLs for raw dataset files stored in S3.
-
-Implemented endpoint:
+The backend can generate temporary S3 download URLs for raw dataset files.
 
 ```text
 GET /api/v1/datasets/{dataset_id}/download-url
 ```
 
-This allows the frontend to download files directly from S3 without routing the file through backend memory.
+This avoids routing large file downloads through backend memory.
 
 ---
 
 ### Query Run History
 
-Every successful query execution is persisted in PostgreSQL.
+Every successful query execution is persisted.
 
-Implemented endpoint:
-
-```text
-GET /api/v1/queries/runs
-```
-
-Tracked fields include:
+Tracked fields:
 
 * Dataset ID
 * SQL text
 * Status
 * Storage backend
-* Returned row count
+* Row count
 * Execution time
 * Error message
-* Created timestamp
+* Timestamp
+
+This powers dashboard observability and recent query history.
 
 ---
 
-### Dashboard Summary API
+### Professional Frontend
 
-The backend exposes a dashboard-ready metrics endpoint.
+The frontend is designed as a polished cloud-console-style analytics product.
 
-Implemented endpoint:
+Current sections:
 
 ```text
-GET /api/v1/dashboard/summary
+Dashboard
+Datasets
+Query Console
+System
 ```
-
-The response includes:
-
-* Total datasets
-* Total rows
-* Total uploaded bytes
-* Total query executions
-* Successful queries
-* Failed queries
-* Average execution time
-* Active storage backend
-* Latest query runs
-
----
-
-## Frontend Progress
-
-The frontend currently includes:
-
-* Professional dark minimalist dashboard shell
-* Dashboard metrics cards
-* Latest query runs table
-* Functional datasets page
-* CSV upload from browser
-* Dataset list
-* Dataset preview
-* Presigned download action
-* Navigation shell for Dashboard, Datasets, Query Console, and System
 
 Design direction:
 
 * Minimalist
-* High-end
-* Easy to navigate
-* Recruiter-friendly
-* Functional rather than decorative
-* Clear visual hierarchy
-* Dark cloud-console-inspired interface
+* Dark interface
+* High visual clarity
+* Strong spacing
+* Clean cards and tables
+* Functional navigation
+* Recruiter-friendly first impression
 
 ---
 
@@ -333,13 +380,19 @@ Design direction:
 
 ### Health
 
-```text
+```http
 GET /api/v1/health
+```
+
+### Dashboard
+
+```http
+GET /api/v1/dashboard/summary
 ```
 
 ### Datasets
 
-```text
+```http
 GET  /api/v1/datasets
 POST /api/v1/datasets
 POST /api/v1/datasets/upload
@@ -350,23 +403,106 @@ GET  /api/v1/datasets/{dataset_id}/download-url
 
 ### Queries
 
-```text
+```http
 POST /api/v1/queries/execute
 POST /api/v1/queries/explain
 GET  /api/v1/queries/runs
 ```
 
-### Dashboard
+### System
 
-```text
-GET /api/v1/dashboard/summary
+```http
+GET /api/v1/system/overview
 ```
+
+---
+
+## Example Query Request
+
+```json
+{
+  "dataset_id": "bee6ec58-33e4-4c29-b5b2-df20ffd2502e",
+  "sql": "SELECT * FROM dataset LIMIT 20"
+}
+```
+
+Example response:
+
+```json
+{
+  "dataset_id": "bee6ec58-33e4-4c29-b5b2-df20ffd2502e",
+  "sql": "SELECT * FROM dataset LIMIT 20",
+  "columns": ["id", "amount", "region"],
+  "rows": [
+    {
+      "id": 1,
+      "amount": 100.5,
+      "region": "North"
+    }
+  ],
+  "row_count": 1,
+  "execution_time_ms": 409.46
+}
+```
+
+---
+
+## Tech Stack
+
+### Backend
+
+| Area             | Technology     |
+| ---------------- | -------------- |
+| API              | FastAPI        |
+| Language         | Python         |
+| Query Engine     | DuckDB         |
+| Metadata DB      | PostgreSQL     |
+| ORM              | SQLAlchemy     |
+| Migrations       | Alembic        |
+| Object Storage   | Amazon S3      |
+| AWS SDK          | boto3          |
+| Package Manager  | uv             |
+| Local DB Runtime | Docker Compose |
+
+### Frontend
+
+| Area       | Technology   |
+| ---------- | ------------ |
+| UI         | React        |
+| Language   | TypeScript   |
+| Build Tool | Vite         |
+| Styling    | Tailwind CSS |
+| Icons      | Lucide React |
+| Deployment | Vercel       |
+
+### Cloud
+
+| Area              | Service             |
+| ----------------- | ------------------- |
+| Frontend Hosting  | Vercel              |
+| Backend Hosting   | Render              |
+| Metadata Database | Supabase PostgreSQL |
+| Object Storage    | Amazon S3           |
+| Region            | ap-south-1          |
 
 ---
 
 ## Local Development
 
-### 1. Clone the repository
+### Prerequisites
+
+* Python
+* uv
+* Node.js
+* npm
+* Docker Desktop
+* AWS account
+* S3 bucket
+* IAM user or role with limited S3 access
+
+---
+
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/Mayankverma210405/S3-Native-Decoupled-Compute-OLAP-Query-Engine.git
@@ -382,7 +518,7 @@ cd backend
 docker compose up -d
 ```
 
-PostgreSQL runs on:
+PostgreSQL runs locally on:
 
 ```text
 localhost:5433
@@ -390,11 +526,15 @@ localhost:5433
 
 ---
 
-### 3. Configure backend environment
+### 3. Configure Backend Environment
 
-Create `backend/.env` using `.env.example` as a reference.
+Create:
 
-Example local configuration:
+```text
+backend/.env
+```
+
+Example:
 
 ```env
 PROJECT_NAME=S3 Native Decoupled Compute OLAP Query Engine
@@ -409,15 +549,18 @@ LOCAL_STORAGE_PATH=storage
 AWS_REGION=ap-south-1
 S3_BUCKET_NAME=your-private-s3-bucket
 
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+
 ENVIRONMENT=development
 DEBUG=true
 ```
 
-AWS credentials should be configured locally and never committed.
+Never commit `.env`.
 
 ---
 
-### 4. Run migrations
+### 4. Run Migrations
 
 ```bash
 uv run alembic upgrade head
@@ -425,23 +568,29 @@ uv run alembic upgrade head
 
 ---
 
-### 5. Start backend
+### 5. Start Backend
 
 ```bash
 uv run python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Backend URL:
+Backend:
 
 ```text
 http://127.0.0.1:8000
 ```
 
+API docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
 ---
 
-### 6. Start frontend
+### 6. Start Frontend
 
-Open a second terminal:
+Open another terminal:
 
 ```bash
 cd frontend
@@ -449,7 +598,7 @@ npm install
 npm run dev
 ```
 
-Frontend URL:
+Frontend:
 
 ```text
 http://localhost:5173
@@ -457,153 +606,222 @@ http://localhost:5173
 
 ---
 
-## AWS Setup Notes
+## Deployment
 
-The project uses a private S3 bucket with a least-privilege IAM policy.
+### Frontend: Vercel
 
-Recommended S3 configuration:
+The frontend is deployed on Vercel.
 
-* Block Public Access enabled
-* ACLs disabled
-* Bucket owner enforced
-* Versioning disabled for development
-* SSE-S3 encryption enabled
-* Access limited to one bucket and the `datasets/*` prefix
+Recommended environment variable:
 
-The backend should use an IAM user or role with access only to the project bucket.
+```env
+VITE_API_BASE_URL=https://YOUR_RENDER_BACKEND_URL
+```
 
-Never commit:
+For local development, Vite proxies `/api` requests to the local backend.
 
-```text
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-.env
+---
+
+### Backend: Render
+
+The FastAPI backend is deployed on Render.
+
+Recommended start command:
+
+```bash
+uv run python -m uvicorn src.main:app --host 0.0.0.0 --port $PORT
+```
+
+Required environment variables:
+
+```env
+PROJECT_NAME=S3 Native Decoupled Compute OLAP Query Engine
+API_VERSION=v1
+DATABASE_URL=your-supabase-postgres-url
+STORAGE_BACKEND=s3
+AWS_REGION=ap-south-1
+S3_BUCKET_NAME=your-private-s3-bucket
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+ENVIRONMENT=production
+DEBUG=false
 ```
 
 ---
 
-## Current Database Tables
+### Database: Supabase PostgreSQL
 
-### datasets
+Supabase PostgreSQL is used as the production metadata database.
 
-Stores dataset metadata.
+The backend stores:
 
-Main fields:
+```text
+datasets
+query_runs
+```
 
-* id
-* name
-* original_filename
-* s3_key
-* storage_format
-* content_type
-* file_size_bytes
-* row_count
-* column_count
-* schema_json
-* status
-* query_count
-* last_query_at
-* created_at
-* updated_at
-
-### query_runs
-
-Stores query execution history.
-
-Main fields:
-
-* id
-* dataset_id
-* sql_text
-* status
-* storage_backend
-* row_count
-* execution_time_ms
-* error_message
-* created_at
+Run migrations against the production database before using the deployed API.
 
 ---
 
-## Project Roadmap
+### Storage: Amazon S3
+
+Recommended S3 configuration:
+
+* General purpose bucket
+* Block Public Access enabled
+* ACLs disabled
+* Bucket owner enforced
+* SSE-S3 encryption enabled
+* Versioning disabled for development
+* IAM access limited to the project bucket and `datasets/*`
+
+---
+
+## Security Notes
+
+This project intentionally avoids exposing secrets to the frontend.
+
+The System page does not expose:
+
+```text
+AWS access key
+AWS secret key
+Database password
+Private S3 bucket name
+Full database URL
+```
+
+The frontend only receives safe metadata such as:
+
+```text
+storage backend
+environment
+API version
+region
+configuration status
+dataset count
+query count
+```
+
+---
+
+## Current Progress
 
 ### Completed
 
-* Backend project scaffold
-* PostgreSQL persistence layer
-* Dataset catalog schema
-* Dataset repository and service layer
+* FastAPI backend scaffold
+* PostgreSQL persistence
+* Alembic migrations
+* Dataset catalog
 * CSV metadata analyzer
-* Local storage abstraction
-* S3 storage backend
-* S3 upload flow
-* DuckDB S3 query support
-* Dataset preview
-* Query EXPLAIN
-* Presigned download URLs
+* S3 object storage backend
+* Storage abstraction layer
+* DuckDB query engine
+* DuckDB S3 reads
+* Dataset preview endpoint
+* Query execution endpoint
+* EXPLAIN endpoint
+* Presigned download URL endpoint
 * Query run history
-* Dashboard summary endpoint
-* Professional dashboard UI
-* Functional datasets UI
+* Dashboard summary API
+* System overview API
+* Professional React dashboard
+* Functional dataset catalog
+* Browser-based CSV upload
+* Dataset preview UI
+* Dataset download action
+* Interactive SQL query console
+* EXPLAIN plan UI
+* System overview UI
+* Cloud deployment architecture
 
-### In Progress
+### Remaining Polish
 
-* Frontend application workflow
-* Query console UI
-* System overview page
-
-### Planned
-
-* Query Console page with SQL editor
-* EXPLAIN plan viewer in frontend
-* Failed query logging
-* Dataset deletion flow
 * Benchmark suite
+* Automated tests
+* Final screenshots
 * Architecture diagrams
-* Deployment to Render and Vercel
-* Supabase PostgreSQL migration
-* Final README polish with measured benchmark results
+* Production monitoring polish
+* Measured performance claims
 
 ---
 
 ## Benchmark Plan
 
-Benchmarking is planned but not yet finalized.
+Benchmarking is planned as the next engineering phase.
 
-Planned metrics:
+Planned measurements:
 
-* Backend memory usage during upload
 * Query execution latency
-* S3 read performance
-* Data transfer behavior
-* Comparison against naive backend file buffering
-* Cost comparison against always-on database-style storage
+* Upload memory behavior
+* Backend memory usage during CSV upload
+* DuckDB S3 scan performance
+* Naive backend buffering vs object-storage upload
+* S3-backed query flow vs database-loaded workflow
 
-No benchmark claims are treated as final until measured and documented.
+No final performance claims are made until benchmark data is collected.
 
 ---
 
-## Why This Project Matters
-
-Traditional database-backed analytics systems often require data to be loaded into a database before querying. This project explores a more cloud-native pattern:
+## Repository Structure
 
 ```text
-Object storage for durable raw data
-+
-On-demand compute for SQL execution
-+
-Metadata database for cataloging and observability
+.
+├── backend
+│   ├── src
+│   │   ├── api
+│   │   ├── core
+│   │   ├── database
+│   │   ├── schemas
+│   │   ├── services
+│   │   └── storage
+│   ├── docker-compose.yml
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── frontend
+│   ├── src
+│   │   ├── api
+│   │   ├── components
+│   │   ├── layouts
+│   │   ├── pages
+│   │   ├── services
+│   │   └── types
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── docs
+├── benchmarks
+├── samples
+├── scripts
+└── README.md
 ```
 
-This mirrors real-world lakehouse and serverless analytics ideas in a simplified, recruiter-friendly engineering project.
+---
+
+## Interview Talking Points
+
+This project demonstrates:
+
+* Decoupled storage and compute architecture
+* Object-storage-first analytics design
+* SQL query execution over raw S3 files
+* Metadata cataloging with PostgreSQL
+* Query execution observability
+* Presigned URL file access
+* Secure S3 access patterns
+* Full-stack product engineering
+* Clean API design
+* Cloud deployment planning
+* Professional UI/UX execution
 
 ---
 
 ## Author
 
-Mayank Verma
+**Mayank Verma**
 
-Project repository:
+Computer Science & Engineering student focused on backend systems, cloud infrastructure, data engineering, and applied analytics platforms.
 
-```text
-S3-Native-Decoupled-Compute-OLAP-Query-Engine
-```
+</div>
