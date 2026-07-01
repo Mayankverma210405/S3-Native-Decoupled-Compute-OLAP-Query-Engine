@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "S3 Native Decoupled Compute OLAP Query Engine"
     API_VERSION: str = "v1"
-
+    
     DATABASE_URL: str
 
     AWS_REGION: str = "ap-south-1"
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     STORAGE_BACKEND: str = "local"
     LOCAL_STORAGE_PATH: str = "storage"
-
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
