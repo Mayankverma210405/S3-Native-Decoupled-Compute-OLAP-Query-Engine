@@ -23,8 +23,7 @@
 
 <br />
 
-[Live Demo](https://YOUR_VERCEL_FRONTEND_URL) · [Backend API](https://YOUR_RENDER_BACKEND_URL) · [API Docs](https://YOUR_RENDER_BACKEND_URL/docs) · [Architecture](#architecture) · [Local Setup](#local-development)
-
+[Live Demo](https://s3-native-decoupled-compute-olap-qu.vercel.app/) 
 </div>
 
 ---
@@ -800,7 +799,7 @@ No final performance claims are made until benchmark data is collected.
 
 ---
 
-## Interview Talking Points
+## Talking Points
 
 This project demonstrates:
 
