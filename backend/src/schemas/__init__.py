@@ -8,9 +8,11 @@ from src.schemas.dataset import (
 )
 from src.schemas.query import QueryExplainResponse, QueryRequest, QueryResponse
 from src.schemas.query_run import QueryRunListResponse, QueryRunRead
+from src.schemas.system import SystemOverviewResponse
 
 __all__ = [
     "DashboardSummaryResponse",
+    "SystemOverviewResponse",
     "DatasetCreate",
     "DatasetDownloadUrlResponse",
     "DatasetListResponse",

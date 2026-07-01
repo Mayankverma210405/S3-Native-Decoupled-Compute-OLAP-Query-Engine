@@ -3,8 +3,8 @@ import { useState } from "react";
 import { AppLayout, type AppPage } from "./layouts/AppLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DatasetsPage } from "./pages/DatasetsPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { QueryConsolePage } from "./pages/QueryConsolePage";
+import { SystemPage } from "./pages/SystemPage";
 
 export default function App() {
   const [activePage, setActivePage] = useState<AppPage>("dashboard");
@@ -22,12 +22,7 @@ export default function App() {
       return <QueryConsolePage />;
     }
 
-    return (
-      <PlaceholderPage
-        title="System Overview"
-        description="This section will show health checks, backend configuration, storage mode, and deployment details."
-      />
-    );
+    return <SystemPage />;
   }
 
   return (
