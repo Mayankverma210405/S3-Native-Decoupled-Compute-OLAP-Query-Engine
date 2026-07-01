@@ -653,12 +653,6 @@ No unmeasured performance claims are treated as final.
 
 ---
 
-## Resume-Ready Summary
-
-Built a cloud-native OLAP query engine that executes SQL directly over CSV datasets stored in Amazon S3 using DuckDB, FastAPI, PostgreSQL, and React. Implemented S3-backed dataset upload, metadata cataloging, SQL query execution, EXPLAIN plan inspection, query history tracking, dashboard metrics, presigned downloads, and a professional frontend deployed with a modern decoupled architecture.
-
----
-
 ## Repository Structure
 
 ```text
