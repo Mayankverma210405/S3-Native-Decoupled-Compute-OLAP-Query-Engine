@@ -58,13 +58,7 @@ The backend stores raw files in S3, keeps metadata in PostgreSQL, and uses DuckD
 | Object Storage    |           Amazon S3 |            Deployed |
 | Query Engine      |              DuckDB | Embedded in backend |
 
-> Replace the placeholder URLs with actual deployment links after deployment is completed.
 
-```text
-Frontend: https://YOUR_VERCEL_FRONTEND_URL
-Backend:  https://YOUR_RENDER_BACKEND_URL
-Docs:     https://YOUR_RENDER_BACKEND_URL/docs
-```
 
 ---
 
