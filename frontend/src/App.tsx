@@ -4,6 +4,7 @@ import { AppLayout, type AppPage } from "./layouts/AppLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DatasetsPage } from "./pages/DatasetsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { QueryConsolePage } from "./pages/QueryConsolePage";
 
 export default function App() {
   const [activePage, setActivePage] = useState<AppPage>("dashboard");
@@ -18,12 +19,7 @@ export default function App() {
     }
 
     if (activePage === "query") {
-      return (
-        <PlaceholderPage
-          title="Query Console"
-          description="The next module will add a SQL editor, dataset selector, execution results table, and EXPLAIN plan viewer."
-        />
-      );
+      return <QueryConsolePage />;
     }
 
     return (
