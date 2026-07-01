@@ -50,3 +50,7 @@ build/
 *.egg-info/
 # Local development object storage
 backend/storage/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
