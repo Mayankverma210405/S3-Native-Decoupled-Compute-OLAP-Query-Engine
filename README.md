@@ -1,3 +1,4 @@
+<div align="center">
 # S3-Native Decoupled Compute OLAP Query Engine
 
 <div align="center">
